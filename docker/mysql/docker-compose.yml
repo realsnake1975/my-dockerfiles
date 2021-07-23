@@ -1,0 +1,27 @@
+version: "3"
+services:
+  db:
+    image: mysql:8
+    container_name: mysql8
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "!@#Root123"
+      MYSQL_ROOT_HOST: "%"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max_connections=4096
+      - --general_log=1
+      - --general_log_file=/var/lib/mysql/general.log
+      - --log_error=/var/lib/mysql/error.log
+    volumes:
+      # - C:/docker/mysql:/var/lib/mysql
+      - /var/lib/mysql
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536

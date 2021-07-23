@@ -1,0 +1,110 @@
+version: "3"
+
+services:
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:6.1.1
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - /c/docker-data/zookeeper:/var/lib/zookeeper/data
+      - /c/docker-data/zookeeper/log:/var/lib/zookeeper/log
+    restart: always
+
+  kafka1:
+    image: confluentinc/cp-kafka:6.1.1
+    container_name: kafka1
+    ports:
+      - "19092:19092"
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1 # kafka 1ea
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      # https://www.confluent.io/blog/kafka-client-cannot-connect-to-broker-on-aws-on-docker-etc/
+      KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_INTERNAL://host.docker.internal:19092,LISTENER_DOCKER_EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_DOCKER_INTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
+      KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
+      KAFKA_LOG_RETENTION_HOURS: 24
+    volumes:
+      - /c/docker-data/kafka1:/var/lib/kafka/data
+    depends_on:
+      - zookeeper
+    restart: always
+
+  mysql:
+    image: mysql:5.7
+    container_name: mysql57
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "!@#Root123"
+      MYSQL_USER: user
+      MYSQL_PASSWORD: "!@#User123"
+      TZ: Asia/Seoul
+    volumes:
+      - /c/docker-data/mysql:/var/lib/mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max_connections=4096
+      - --general_log=1
+      - --general_log_file=/var/lib/mysql/general.log
+      - --log_error=/var/lib/mysql/error.log
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    restart: always
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: pma
+    ports:
+      - "21010:80"
+    environment:
+      PMA_HOST: mysql
+    depends_on:
+      - mysql
+    restart: always
+
+  redis:
+    image: redis
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - /c/docker-data/redis:/data
+    restart: always
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: redis-cmd
+    ports:
+      - "21020:8081"
+    environment:
+      REDIS_HOSTS: local:redis:6379
+      HTTP_USER: admin
+      HTTP_PASSWORD: "!@#Admin123"
+    depends_on:
+      - redis
+    restart: always
+
+# network
+networks:
+  default:
+    external:
+      name: my-net
+
+# docker-compose -f dc-all-window.yml up -d
+# docker-compose -f dc-all-window.yml down

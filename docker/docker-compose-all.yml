@@ -1,0 +1,140 @@
+version: "3"
+
+services:
+  mysql:
+    image: mysql:5.7
+    container_name: mysql57
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "!@#Root123"
+      MYSQL_ROOT_HOST: "%"
+      TZ: Asia/Seoul
+    volumes:
+      - /C/projects/mine/docker-data/mysql:/var/lib/mysql
+      - /C/projects/mine/docker-data/mysql/conf:/etc/mysql/conf.d
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max_connections=4096
+      - --general_log=1
+      - --general_log_file=/var/lib/mysql/general.log
+      - --log_error=/var/lib/mysql/error.log
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    restart: always
+
+  redis:
+    image: redis
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - /C/projects/mine/docker-data/redis:/data
+    # command: redis-server --requirepass !@#Redis123 --port 6379
+    restart: always
+
+  redis-commander: 
+    image: rediscommander/redis-commander:latest
+    container_name: redis-commander 
+    hostname: redis-commander
+    ports: 
+      - "8081:8081"
+    environment: 
+      REDIS_HOSTS: local:redis:6379
+      HTTP_USER: admin
+      HTTP_PASSWORD: "!@#Admin123"
+    depends_on:
+      - redis
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:6.1.0
+    container_name: zookeeper
+    hostname: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes: 
+      - /C/projects/mine/docker-data/zookeeper:/data
+      - /C/projects/mine/docker-data/zookeeper:/datalog
+    restart: always
+
+  kafka1:
+    image: confluentinc/cp-enterprise-kafka:6.1.0
+    container_name: kafka1
+    hostname: kafka1
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1 
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181' 
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT 
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:29092,PLAINTEXT_HOST://localhost:9092 
+      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter 
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1 
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0 
+      CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: localhost:29092
+      CONFLUENT_METRICS_REPORTER_ZOOKEEPER_CONNECT: localhost:2181
+      CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1 
+      CONFLUENT_METRICS_ENABLE: 'true' 
+      CONFLUENT_SUPPORT_CUSTOMER_ID: 'anonymous'
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+      KAFKA_LOG_DIRS: /kafka/logs
+    volumes:
+      - /C/projects/mine/docker-data/kafka1:/var/lib/kafka/data
+      - /C/projects/mine/docker-data/kafka1:/kafka/logs
+    depends_on:
+      - zookeeper
+    restart: always
+
+  kafka_manager:
+    image: hlebalbau/kafka-manager:stable 
+    container_name: kafka-manager
+    ports: 
+      - "9999:9000" 
+    environment: 
+      ZK_HOSTS: "zookeeper:2181" 
+      APPLICATION_SECRET: "random-secret"
+    command: -Dpidfile.path=/dev/null
+    depends_on: 
+      - zookeeper 
+      - kafka1
+
+  mongodb:
+    image: mongo:4
+    container_name: mongodb
+    hostname: mongodb
+    ports:
+      - "27017:27017"
+    environment: 
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: "!@#Root123"
+    volumes:
+      # -v 옵션 (다렉토리 마운트 설정)
+      - /C/projects/mine/docker-data/mongodb:/data/db
+    restart: always
+
+  mongo-express:
+    image: mongo-express
+    container_name: mongo-express
+    hostname: mongo-express
+    ports:
+      - "18081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: "!@#Root123"
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: "!@#Admin123"
+    depends_on: 
+      - mongodb 
+
+# docker-compose -f docker-compose-all.yml up -d
+# docker-compose -f docker-compose-all.yml down
