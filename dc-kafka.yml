@@ -10,13 +10,14 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
-    volumes:
-      - /docker-data/zookeeper:/var/lib/zookeeper/data
-      - /docker-data/zookeeper/log:/var/lib/zookeeper/log
+    #volumes:
+      #- /docker-data/zookeeper:/var/lib/zookeeper/data
+      #- /docker-data/zookeeper/log:/var/lib/zookeeper/log
     restart: always
 
   kafka1:
     image: confluentinc/cp-kafka:6.1.1
+    hostname: kafka1
     container_name: kafka1
     ports:
       - "19092:19092"
@@ -27,15 +28,12 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1 # kafka 1ea
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      # https://www.confluent.io/blog/kafka-client-cannot-connect-to-broker-on-aws-on-docker-etc/
-      KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_INTERNAL://host.docker.internal:19092,LISTENER_DOCKER_EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_DOCKER_INTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka1:19092,PLAINTEXT_HOST://localhost:9092
       KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
       KAFKA_LOG_RETENTION_HOURS: 24
-    volumes:
-      # 도커 컨테이너 삭제 후 재시작 시 /docker-data/kafka1/meta.properties 파일 삭제 후 재시작해야 에러 발생 무
-      - /docker-data/kafka1:/var/lib/kafka/data
+    #volumes:
+      #- /docker-data/kafka1:/var/lib/kafka/data
     depends_on:
       - zookeeper
     restart: always
